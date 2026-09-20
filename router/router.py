@@ -1,17 +1,26 @@
 """
 RouteEdge Router
 
-Provides routing and inference endpoints for RouteEdge.
+Adaptive routing between:
+    1. Raspberry Pi edge inference
+    2. GPU server inference
+
+Both endpoints currently run the same Qwen2.5-0.5B model
+through Ollama.
 
 Current capabilities:
     - Always-edge baseline
     - Always-server baseline
     - RouteEdge adaptive routing
     - Privacy-aware routing
-    - Raspberry Pi edge inference through Ollama
+    - Edge inference
+    - GPU server inference
+    - Latency and throughput measurements
 
-The current workload-size routing rule is temporary.
-It will later be replaced with measured latency/energy scoring.
+NOTE:
+The current workload-size routing heuristic is temporary.
+It will later be replaced by RouteEdge's measured
+latency/energy cost model.
 """
 
 import time
@@ -29,7 +38,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(
     title="RouteEdge Router",
     description="Adaptive routing for edge/cloud LLM inference",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -37,22 +46,28 @@ app = FastAPI(
 # Configuration
 # ============================================================
 
+# Raspberry Pi Ollama endpoint
 EDGE_URL = "http://pizero.local:11434/api/generate"
 
-# Server endpoint will be added once the server side is ready.
-SERVER_URL = None
+# GPU-backed Ollama endpoint on the XPS
+SERVER_URL = "http://localhost:11434/api/generate"
 
+# Same model on both devices so hardware is the primary
+# experimental variable.
 MODEL = "qwen2.5:0.5b"
 
+# Maximum request duration before RouteEdge gives up.
 REQUEST_TIMEOUT = 300
 
+# Prevent uncontrolled/runaway generation.
 MAX_OUTPUT_TOKENS = 256
 
+# Keep Ollama models loaded between requests.
 KEEP_ALIVE = "10m"
 
 
 # ============================================================
-# Routing modes
+# Routing Modes
 # ============================================================
 
 class RoutingMode(str, Enum):
@@ -62,19 +77,26 @@ class RoutingMode(str, Enum):
 
 
 # ============================================================
-# API models
+# API Models
 # ============================================================
 
 class InferenceRequest(BaseModel):
+    """
+    Request submitted to RouteEdge.
+    """
+
     prompt: str
 
-    # Privacy-sensitive requests must remain local.
+    # Privacy-sensitive requests must remain on the edge.
     private: bool = False
 
-    # 0.0 = prioritize energy
-    # 1.0 = prioritize latency
+    # User preference:
     #
-    # This will become part of the final weighted cost model.
+    # 0.0 -> prioritize energy
+    # 1.0 -> prioritize latency
+    #
+    # This will become part of the final RouteEdge
+    # weighted cost function.
     priority: float = Field(
         default=0.5,
         ge=0.0,
@@ -85,30 +107,41 @@ class InferenceRequest(BaseModel):
 
 
 class RoutingDecision(BaseModel):
+    """
+    Result produced by the routing algorithm.
+    """
+
     target: str
     reason: str
 
 
 class InferenceResponse(BaseModel):
+    """
+    Complete response returned after inference.
+    """
+
     target: str
     reason: str
+
     response: str
+
     latency_s: float
 
-    # Useful inference statistics returned by Ollama.
     prompt_tokens: int | None = None
     output_tokens: int | None = None
+
     generation_tokens_per_s: float | None = None
 
 
 # ============================================================
-# Helper functions
+# Helper Functions
 # ============================================================
 
 def ns_to_seconds(value):
     """
-    Convert nanoseconds to seconds.
+    Convert Ollama nanosecond timing values to seconds.
     """
+
     if not value:
         return 0.0
 
@@ -122,6 +155,7 @@ def calculate_generation_rate(
     """
     Calculate generation throughput in tokens per second.
     """
+
     if not output_tokens or not eval_duration_ns:
         return None
 
@@ -134,43 +168,46 @@ def calculate_generation_rate(
 
 
 # ============================================================
-# Routing logic
+# Routing Logic
 # ============================================================
 
 def choose_target(
     request: InferenceRequest,
 ) -> RoutingDecision:
     """
-    Decide whether a request should run on the edge device
-    or the server.
+    Decide whether inference should execute on the Raspberry Pi
+    edge device or the GPU server.
 
-    NOTE:
-    The 100-word workload threshold is temporary scaffolding.
+    The current 100-word threshold is temporary scaffolding.
 
-    Later, RouteEdge will replace this with a cost model using:
-        - predicted latency
-        - predicted energy
-        - network delay
+    It will eventually be replaced with a cost model using:
+
+        - predicted edge latency
+        - predicted server latency
+        - network latency
+        - estimated energy
         - user priority
         - privacy constraints
-        - device availability
+        - endpoint availability
     """
 
     # --------------------------------------------------------
-    # Explicit baseline: always edge
+    # Baseline: always use edge
     # --------------------------------------------------------
 
     if request.mode == RoutingMode.ALWAYS_EDGE:
+
         return RoutingDecision(
             target="edge",
             reason="Always-edge baseline selected.",
         )
 
     # --------------------------------------------------------
-    # Explicit baseline: always server
+    # Baseline: always use server
     # --------------------------------------------------------
 
     if request.mode == RoutingMode.ALWAYS_SERVER:
+
         return RoutingDecision(
             target="server",
             reason="Always-server baseline selected.",
@@ -181,6 +218,7 @@ def choose_target(
     # --------------------------------------------------------
 
     if request.private:
+
         return RoutingDecision(
             target="edge",
             reason=(
@@ -189,7 +227,7 @@ def choose_target(
         )
 
     # --------------------------------------------------------
-    # Temporary workload-size heuristic
+    # Temporary workload heuristic
     # --------------------------------------------------------
 
     prompt_length = len(
@@ -197,6 +235,7 @@ def choose_target(
     )
 
     if prompt_length <= 100:
+
         return RoutingDecision(
             target="edge",
             reason=(
@@ -215,15 +254,14 @@ def choose_target(
 
 
 # ============================================================
-# Inference functions
+# Edge Inference
 # ============================================================
 
 def run_edge_inference(
     prompt: str,
 ) -> dict:
     """
-    Send an inference request to the Raspberry Pi Ollama
-    endpoint.
+    Run inference using Qwen on the Raspberry Pi.
     """
 
     payload = {
@@ -239,6 +277,7 @@ def run_edge_inference(
     start = time.perf_counter()
 
     try:
+
         response = requests.post(
             EDGE_URL,
             json=payload,
@@ -248,6 +287,7 @@ def run_edge_inference(
         response.raise_for_status()
 
     except requests.exceptions.Timeout:
+
         raise HTTPException(
             status_code=504,
             detail=(
@@ -256,6 +296,7 @@ def run_edge_inference(
         )
 
     except requests.exceptions.ConnectionError:
+
         raise HTTPException(
             status_code=503,
             detail=(
@@ -265,6 +306,7 @@ def run_edge_inference(
         )
 
     except requests.exceptions.RequestException as error:
+
         raise HTTPException(
             status_code=502,
             detail=(
@@ -292,15 +334,28 @@ def run_edge_inference(
     )
 
     return {
-        "response": data.get("response", ""),
-        "latency_s": round(latency, 3),
+        "response": data.get(
+            "response",
+            "",
+        ),
+
+        "latency_s": round(
+            latency,
+            3,
+        ),
+
         "prompt_tokens": data.get(
             "prompt_eval_count",
             0,
         ),
+
         "output_tokens": output_tokens,
+
         "generation_tokens_per_s": (
-            round(generation_rate, 2)
+            round(
+                generation_rate,
+                2,
+            )
             if generation_rate is not None
             else None
         ),
@@ -308,22 +363,139 @@ def run_edge_inference(
 
 
 # ============================================================
-# API endpoints
+# Server Inference
+# ============================================================
+
+def run_server_inference(
+    prompt: str,
+) -> dict:
+    """
+    Run inference using Qwen on the GPU-backed XPS server.
+    """
+
+    payload = {
+        "model": MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "keep_alive": KEEP_ALIVE,
+        "options": {
+            "num_predict": MAX_OUTPUT_TOKENS,
+        },
+    }
+
+    start = time.perf_counter()
+
+    try:
+
+        response = requests.post(
+            SERVER_URL,
+            json=payload,
+            timeout=REQUEST_TIMEOUT,
+        )
+
+        response.raise_for_status()
+
+    except requests.exceptions.Timeout:
+
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                "GPU server inference request timed out."
+            ),
+        )
+
+    except requests.exceptions.ConnectionError:
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Unable to connect to the GPU server "
+                "inference endpoint."
+            ),
+        )
+
+    except requests.exceptions.RequestException as error:
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"Server inference request failed: {error}"
+            ),
+        )
+
+    latency = time.perf_counter() - start
+
+    data = response.json()
+
+    output_tokens = data.get(
+        "eval_count",
+        0,
+    )
+
+    eval_duration = data.get(
+        "eval_duration",
+        0,
+    )
+
+    generation_rate = calculate_generation_rate(
+        output_tokens,
+        eval_duration,
+    )
+
+    return {
+        "response": data.get(
+            "response",
+            "",
+        ),
+
+        "latency_s": round(
+            latency,
+            3,
+        ),
+
+        "prompt_tokens": data.get(
+            "prompt_eval_count",
+            0,
+        ),
+
+        "output_tokens": output_tokens,
+
+        "generation_tokens_per_s": (
+            round(
+                generation_rate,
+                2,
+            )
+            if generation_rate is not None
+            else None
+        ),
+    }
+
+
+# ============================================================
+# API Endpoints
 # ============================================================
 
 @app.get("/")
 def root():
     """
-    Basic health/status endpoint.
+    RouteEdge status endpoint.
     """
 
     return {
         "service": "RouteEdge",
         "status": "online",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "model": MODEL,
-        "edge_endpoint": EDGE_URL,
-        "server_connected": SERVER_URL is not None,
+
+        "edge": {
+            "type": "Raspberry Pi",
+            "endpoint": EDGE_URL,
+        },
+
+        "server": {
+            "type": "GPU Server",
+            "endpoint": SERVER_URL,
+        },
     }
 
 
@@ -335,10 +507,13 @@ def route(
     request: InferenceRequest,
 ):
     """
-    Return a routing decision without performing inference.
+    Return RouteEdge's routing decision without actually
+    performing inference.
     """
 
-    return choose_target(request)
+    return choose_target(
+        request
+    )
 
 
 @app.post(
@@ -349,14 +524,16 @@ def infer(
     request: InferenceRequest,
 ):
     """
-    Route the request and perform inference on the selected
-    target.
+    Route a request and execute inference on the selected
+    compute target.
     """
 
-    decision = choose_target(request)
+    decision = choose_target(
+        request
+    )
 
     # --------------------------------------------------------
-    # Edge inference
+    # Edge
     # --------------------------------------------------------
 
     if decision.target == "edge":
@@ -367,36 +544,72 @@ def infer(
 
         return InferenceResponse(
             target="edge",
+
             reason=decision.reason,
-            response=result["response"],
-            latency_s=result["latency_s"],
-            prompt_tokens=result["prompt_tokens"],
-            output_tokens=result["output_tokens"],
-            generation_tokens_per_s=(
-                result["generation_tokens_per_s"]
-            ),
+
+            response=result[
+                "response"
+            ],
+
+            latency_s=result[
+                "latency_s"
+            ],
+
+            prompt_tokens=result[
+                "prompt_tokens"
+            ],
+
+            output_tokens=result[
+                "output_tokens"
+            ],
+
+            generation_tokens_per_s=result[
+                "generation_tokens_per_s"
+            ],
         )
 
     # --------------------------------------------------------
-    # Server inference
+    # Server
     # --------------------------------------------------------
 
-    # We have not connected the GPU/server endpoint yet.
-    #
-    # Returning a clear error is better than pretending that
-    # server inference happened.
+    if decision.target == "server":
 
-    if SERVER_URL is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "RouteEdge selected the server, but the "
-                "server inference endpoint is not connected yet."
-            ),
+        result = run_server_inference(
+            request.prompt
         )
 
-    # This will be implemented when the server endpoint is ready.
+        return InferenceResponse(
+            target="server",
+
+            reason=decision.reason,
+
+            response=result[
+                "response"
+            ],
+
+            latency_s=result[
+                "latency_s"
+            ],
+
+            prompt_tokens=result[
+                "prompt_tokens"
+            ],
+
+            output_tokens=result[
+                "output_tokens"
+            ],
+
+            generation_tokens_per_s=result[
+                "generation_tokens_per_s"
+            ],
+        )
+
+    # This should never occur unless the routing logic
+    # returns an unsupported target.
+
     raise HTTPException(
-        status_code=501,
-        detail="Server inference is not implemented yet.",
+        status_code=500,
+        detail=(
+            "RouteEdge produced an unknown routing target."
+        ),
     )
