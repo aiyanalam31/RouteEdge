@@ -64,4 +64,3 @@ The original design sketch included a separate `edge/main.py` orchestrating the
 camera loop. Since `gesture_detect.py` already owns a working camera loop, we
 kept `main.py` as a **thin launcher** that just calls into `gesture_detect.py`,
 rather than duplicating the loop. See comments in `edge/main.py`.
->>>>>>> master
