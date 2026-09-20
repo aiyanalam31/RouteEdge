@@ -1,0 +1,17 @@
+{
+  "short": [
+    "Explain in two sentences what branch prediction does in a modern processor.",
+    "What is virtual memory and why is it useful? Answer in two sentences.",
+    "Explain the purpose of a CPU cache in two sentences."
+  ],
+  "medium": [
+    "Explain how pipelining, cache memory, and branch prediction work together to improve CPU performance. Discuss one performance limitation of each technique. Keep your answer under 200 words.",
+    "Explain the difference between a CPU and a GPU, including how their architectures affect the types of workloads they perform well. Keep your answer under 200 words.",
+    "Explain how virtual memory, caches, and main memory interact when a program accesses data. Include the major sources of latency. Keep your answer under 200 words."
+  ],
+  "long": [
+    "Compare pipelining, cache hierarchy, branch prediction, out-of-order execution, and SIMD as techniques for improving processor performance. Explain the hardware tradeoffs of each, how they interact with memory latency, and which workloads benefit most from each technique. Conclude by explaining why improving one component does not necessarily improve overall system performance. Keep your answer under 350 words.",
+    "Explain how a modern computer executes a program from the moment an instruction is fetched through execution and memory access. Discuss caches, virtual memory, branch prediction, pipelining, and out-of-order execution, including the major performance bottlenecks. Keep your answer under 350 words.",
+    "Compare edge computing with cloud computing for artificial intelligence inference. Discuss computation capability, memory constraints, network latency, privacy, energy consumption, and reliability. Explain circumstances where each approach is preferable and why an adaptive system might dynamically choose between them. Keep your answer under 350 words."
+  ]
+}
