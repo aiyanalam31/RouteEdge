@@ -1,0 +1,10 @@
+timestamp,device,model,workload,run,success,error,latency_s,total_duration_s,load_duration_s,prompt_eval_duration_s,eval_duration_s,prompt_tokens,output_tokens,prompt_tokens_per_s,generation_tokens_per_s,max_output_tokens,done_reason
+2026-09-20T03:57:59.794227,xps_rtx3050,qwen2.5:0.5b,short,1,True,,9.0747,6.9985,0.4077,6.24,0.3247,43,28,6.89,86.22,256,stop
+2026-09-20T03:58:02.860199,xps_rtx3050,qwen2.5:0.5b,short,2,True,,3.0656,0.9943,0.4166,0.0212,0.5016,43,56,2024.76,111.65,256,stop
+2026-09-20T03:58:05.765455,xps_rtx3050,qwen2.5:0.5b,short,3,True,,2.905,0.8531,0.4295,0.0174,0.3683,43,35,2469.72,95.03,256,stop
+2026-09-20T03:58:09.947038,xps_rtx3050,qwen2.5:0.5b,medium,1,True,,4.1812,2.1155,0.4279,0.066,1.4097,65,256,985.23,181.6,256,length
+2026-09-20T03:58:13.958611,xps_rtx3050,qwen2.5:0.5b,medium,2,True,,4.0113,1.9483,0.4285,0.0225,1.2858,65,256,2886.04,199.09,256,length
+2026-09-20T03:58:17.965777,xps_rtx3050,qwen2.5:0.5b,medium,3,True,,4.0068,1.9424,0.4294,0.0228,1.279,65,256,2850.89,200.16,256,length
+2026-09-20T03:58:22.090399,xps_rtx3050,qwen2.5:0.5b,long,1,True,,4.1243,2.0548,0.4291,0.0607,1.3761,81,256,1334.28,186.04,256,length
+2026-09-20T03:58:26.140297,xps_rtx3050,qwen2.5:0.5b,long,2,True,,4.0495,1.9738,0.4513,0.0182,1.3049,81,256,4452.16,196.18,256,length
+2026-09-20T03:58:30.150737,xps_rtx3050,qwen2.5:0.5b,long,3,True,,4.01,1.9397,0.4277,0.0214,1.2864,81,256,3788.64,199.0,256,length
