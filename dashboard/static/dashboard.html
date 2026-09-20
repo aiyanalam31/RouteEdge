@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RouteEdge Live Dashboard</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #111; color: #eee; margin: 0; padding: 24px; }
+  h1 { font-weight: 600; font-size: 1.4rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .card { background: #1b1b1b; border-radius: 10px; padding: 16px; border: 1px solid #2a2a2a; }
+  .card h2 { margin-top: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; }
+  .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 0.85rem; }
+  .local { background: #1f4d2c; color: #7ee29a; }
+  .cloud { background: #4d3a1f; color: #f0b45a; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a2a; }
+  th { color: #888; font-weight: 500; }
+  .metric { font-size: 1.6rem; font-weight: 700; }
+  .metric-label { color: #888; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+  <h1>RouteEdge — Live Routing Dashboard</h1>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Current Decision</h2>
+      <div id="current-decision">—</div>
+    </div>
+    <div class="card">
+      <h2>Rolling Stats (last 500 frames)</h2>
+      <div id="stats"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>Recent Frames</h2>
+    <table id="frame-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Decision</th><th>Result</th><th>Local Cost</th>
+          <th>Cloud Cost</th><th>Latency (ms)</th><th>Energy (mJ)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+async function refresh() {
+  const res = await fetch("/api/records");
+  const records = await res.json();
+  if (records.length === 0) return;
+
+  const last = records[records.length - 1];
+  const badgeClass = last.decision === "LOCAL" ? "local" : "cloud";
+  document.getElementById("current-decision").innerHTML = `
+    <span class="badge ${badgeClass}">${last.decision}</span>
+    &nbsp; result: <b>${last.final_direction ?? "—"}</b>
+    &nbsp; latency: ${last.latency_ms?.toFixed(1) ?? "—"} ms
+  `;
+
+  const cloudCount = records.filter(r => r.decision === "CLOUD").length;
+  const localPct = (100 * (records.length - cloudCount) / records.length).toFixed(1);
+  const avgLatency = (records.reduce((a, r) => a + (r.latency_ms || 0), 0) / records.length).toFixed(1);
+  document.getElementById("stats").innerHTML = `
+    <div class="metric">${localPct}%</div><div class="metric-label">routed local</div>
+    <div class="metric" style="margin-top:8px;">${avgLatency} ms</div><div class="metric-label">avg latency</div>
+  `;
+
+  const tbody = document.querySelector("#frame-table tbody");
+  tbody.innerHTML = records.slice(-15).reverse().map(r => `
+    <tr>
+      <td>${r.frame_id ?? "—"}</td>
+      <td><span class="badge ${r.decision === 'LOCAL' ? 'local' : 'cloud'}">${r.decision}</span></td>
+      <td>${r.final_direction ?? "—"}</td>
+      <td>${r.local_cost?.toFixed(3) ?? "—"}</td>
+      <td>${isFinite(r.cloud_cost) ? r.cloud_cost.toFixed(3) : "∞"}</td>
+      <td>${r.latency_ms?.toFixed(1) ?? "—"}</td>
+      <td>${r.energy_estimate_mj?.toFixed(2) ?? "—"}</td>
+    </tr>
+  `).join("");
+}
+
+setInterval(refresh, 1000);
+refresh();
+</script>
+</body>
+</html>

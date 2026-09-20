@@ -1,0 +1,11 @@
+# Baseline "everything is fine" scenario. Expect RouteEdge to stay local
+# most of the time here, since local confidence should be high and cloud
+# offers no compelling advantage.
+scenario: good_network_good_light
+network_preset: good        # see experiments/network_conditions.py PRESETS
+lighting: bright             # frame source should be recorded under bright,
+                              # even lighting
+privacy_flag: false
+description: >
+  Control condition. Good network, good lighting, no privacy constraint.
+  RouteEdge should favor local for most frames.

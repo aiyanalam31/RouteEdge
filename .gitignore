@@ -1,3 +1,4 @@
+HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -216,3 +217,25 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+=======
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Built C library
+edge/router/*.o
+edge/router/librouter.so
+
+# Experiment output (mostly regenerable, keep the tree clean)
+experiments/results/*.jsonl
+experiments/results/*.csv
+!experiments/results/.gitkeep
+
+# Generated analysis artifacts
+analysis/*.png
+analysis/benchmark_report.md
+
+# OS cruft
+.DS_Store
+>>>>>>> master

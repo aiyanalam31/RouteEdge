@@ -1,0 +1,12 @@
+# Good lighting means local confidence should be high, but a degraded
+# network should make cloud unattractive even if local confidence dips
+# occasionally. Tests that the router correctly weighs network cost against
+# local confidence rather than escalating reflexively.
+scenario: bad_network_good_light
+network_preset: bad
+lighting: bright
+privacy_flag: false
+description: >
+  Good lighting, poor network (tc netem 'bad' preset: high delay/jitter,
+  low bandwidth). RouteEdge should stay local even for borderline-confidence
+  frames, since cloud cost is high.
