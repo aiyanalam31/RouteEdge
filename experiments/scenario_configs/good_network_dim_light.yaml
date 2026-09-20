@@ -1,0 +1,12 @@
+# Inverse of the above: local confidence should degrade (more flicker,
+# noisier mask, low brightness signal) while the network is cheap to use.
+# This is the scenario that should show the router escalating to cloud.
+scenario: good_network_dim_light
+network_preset: good
+lighting: dim
+privacy_flag: false
+description: >
+  Dim/uneven lighting degrades the local HSV-threshold pipeline (more
+  flicker, noisier mask, low brightness signal) while network cost stays
+  low. RouteEdge should escalate to cloud more often here than in the
+  good_network_good_light scenario.

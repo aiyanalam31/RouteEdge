@@ -1,0 +1,14 @@
+# RouteEdge cloud-server configuration.
+
+server:
+  port: 9000
+  max_concurrent_connections: 8
+
+model:
+  # "mediapipe_hands" uses the pretrained MediaPipe Hands model (no training
+  # required). Swap to "custom_cnn" and point `path` at your own trained
+  # weights if you build a dedicated gesture classifier instead.
+  type: "mediapipe_hands"
+  path: "pretrained://mediapipe_hands"
+  max_num_hands: 1
+  min_detection_confidence: 0.6

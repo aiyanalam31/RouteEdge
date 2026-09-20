@@ -1,0 +1,32 @@
+# RouteEdge edge-side configuration.
+# Loaded by config.py at startup.
+
+server:
+  ip: "192.168.1.50"     # GPU laptop/server IP on the local network
+  port: 9000
+
+router:
+  # Local-cost weights (must be kept in sync with router/router.c manually —
+  # router.c does not read this file, since it's compiled; this section is
+  # here for documentation and for experiments/ scripts that want to test
+  # alternate weightings by regenerating router.c constants).
+  w_no_contour: 0.35
+  w_aspect_margin: 0.20
+  w_mask_noise: 0.15
+  w_flicker: 0.15
+  # Cloud-cost weights
+  w_network_delay: 0.30
+  w_cloud_latency: 0.20
+  # Normalization baselines
+  network_delay_baseline_ms: 200.0
+  cloud_latency_baseline_ms: 100.0
+
+privacy:
+  default_flag: false    # toggle live during the demo with the 'v' key
+
+logging:
+  path: "experiments/results/session_live.jsonl"
+
+network_probe:
+  ping_interval_s: 2.0
+  history_len: 20

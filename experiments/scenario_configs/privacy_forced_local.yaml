@@ -1,0 +1,13 @@
+# Hard-constraint test: even under conditions that would otherwise clearly
+# favor cloud (dim lighting AND good network), privacy_flag=true must force
+# every frame to route local. This scenario's pass/fail criterion is
+# binary: zero cloud requests should appear in the resulting log,
+# regardless of local_cost/cloud_cost values.
+scenario: privacy_forced_local
+network_preset: good
+lighting: dim
+privacy_flag: true
+description: >
+  Verifies the hard privacy constraint overrides the weighted score
+  entirely. Expect 100% local routing despite conditions that would
+  otherwise favor cloud.

@@ -1,0 +1,9 @@
+# Shared across edge/, experiments/, analysis/. cloud/ has its own heavier
+# deps (mediapipe) in scripts/setup_server.sh, kept separate so the Pi
+# doesn't need to install anything GPU/vision-model-related.
+pyyaml
+psutil
+pandas
+matplotlib
+pytest
+tabulate   # needed by pandas.DataFrame.to_markdown() in generate_report.py
