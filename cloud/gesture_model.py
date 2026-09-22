@@ -47,12 +47,14 @@ class GestureModel:
         results = self._hands.process(rgb_frame)
 
         if not results.multi_hand_landmarks:
-            return {"direction": None, "confidence": 0.0, "landmarks_found": False}
-
+            print("[gesture_model] NO HAND LANDMARKS DETECTED")
+            return {"direction": None, "confidence": 0.0,"landmarks_found": False}
         landmarks = results.multi_hand_landmarks[0]
         direction, confidence = self._classify_from_landmarks(landmarks)
-        return {"direction": direction, "confidence": confidence,
-                "landmarks_found": True}
+
+        print(f"[gesture_model] HAND DETECTED | " f"direction={direction} | confidence={confidence:.3f} | " f"tip_x={landmarks.landmark[8].x:.3f} | " f"base_x={landmarks.landmark[5].x:.3f}")
+
+        return {"direction": direction, "confidence": confidence, "landmarks_found": True}
 
     @staticmethod
     def _classify_from_landmarks(landmarks):

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RouteEdge</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: #0b0d12;
+    color: #f5f7fa;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    height: 64px;
+    border-bottom: 1px solid #252a35;
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    justify-content: space-between;
+}
+
+.logo {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.logo span {
+    color: #8ba4ff;
+}
+
+.status {
+    font-size: 13px;
+    color: #9da6b5;
+}
+
+main {
+    flex: 1;
+    width: min(900px, 92%);
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 0 140px;
+    overflow-y: auto;
+}
+
+.hero {
+    margin: auto 0;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 38px;
+    margin-bottom: 10px;
+}
+
+.hero p {
+    color: #9da6b5;
+}
+
+.message {
+    margin: 14px 0;
+    line-height: 1.6;
+}
+
+.user {
+    background: #1b1f29;
+    padding: 14px 18px;
+    border-radius: 16px;
+    margin-left: auto;
+    max-width: 70%;
+}
+
+.assistant {
+    max-width: 85%;
+}
+
+.route-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 12px;
+    padding: 6px 10px;
+    border: 1px solid #343b49;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #bbc3d0;
+}
+
+.route-badge:hover {
+    background: #171b23;
+}
+
+.details {
+    display: none;
+    margin-top: 10px;
+    padding: 14px;
+    border-left: 2px solid #647cff;
+    background: #12151c;
+    font-size: 13px;
+    color: #adb6c5;
+    line-height: 1.7;
+}
+
+.composer-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    background: linear-gradient(transparent, #0b0d12 30%);
+}
+
+.composer {
+    max-width: 900px;
+    margin: auto;
+    background: #171a22;
+    border: 1px solid #303643;
+    border-radius: 18px;
+    padding: 12px 14px;
+}
+
+textarea {
+    width: 100%;
+    resize: none;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 16px;
+    min-height: 45px;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.options {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    font-size: 12px;
+    color: #9da6b5;
+}
+
+select {
+    background: #222630;
+    color: white;
+    border: 1px solid #343a47;
+    border-radius: 7px;
+    padding: 5px;
+}
+
+button {
+    background: #647cff;
+    border: none;
+    color: white;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+button:disabled {
+    opacity: .5;
+}
+
+.private-control {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.loading {
+    color: #9da6b5;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">Route<span>Edge</span></div>
+    <div class="status">● Adaptive Edge / Cloud AI</div>
+</header>
+
+<main id="chat">
+
+    <div class="hero" id="hero">
+        <h1>How can RouteEdge help?</h1>
+        <p>Your request will automatically run on the edge or cloud.</p>
+    </div>
+
+</main>
+
+<div class="composer-container">
+<div class="composer">
+
+<textarea
+    id="prompt"
+    placeholder="Ask RouteEdge anything..."
+    rows="1"></textarea>
+
+<div class="controls">
+
+<div class="options">
+
+<label>
+Response
+<select id="length">
+    <option value="64">Short</option>
+    <option value="128" selected>Medium</option>
+    <option value="256">Long</option>
+</select>
+</label>
+
+<label>
+Optimize
+<select id="priority">
+    <option value="1">Latency</option>
+    <option value="0.5" selected>Balanced</option>
+    <option value="0">Energy</option>
+</select>
+</label>
+
+<label class="private-control">
+<input type="checkbox" id="private">
+Private
+</label>
+
+</div>
+
+<button id="send" onclick="sendPrompt()">➤</button>
+
+</div>
+</div>
+</div>
+
+<script>
+
+const promptBox = document.getElementById("prompt");
+
+promptBox.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendPrompt();
+    }
+});
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function sendPrompt() {
+
+    const prompt = promptBox.value.trim();
+
+    if (!prompt) return;
+
+    const chat = document.getElementById("chat");
+    const hero = document.getElementById("hero");
+    const button = document.getElementById("send");
+
+    if (hero) hero.remove();
+
+    chat.insertAdjacentHTML(
+        "beforeend",
+        `<div class="message user">${escapeHtml(prompt)}</div>`
+    );
+
+    const loadingId = "loading-" + Date.now();
+
+    chat.insertAdjacentHTML(
+        "beforeend",
+        `<div class="message assistant loading" id="${loadingId}">
+            RouteEdge is selecting a compute target...
+        </div>`
+    );
+
+    chat.scrollTop = chat.scrollHeight;
+
+    button.disabled = true;
+    promptBox.value = "";
+
+    const body = {
+        prompt: prompt,
+        private: document.getElementById("private").checked,
+        expected_output_tokens:
+            Number(document.getElementById("length").value),
+
+        // Keep demo network assumption fixed.
+        network_latency_ms: 500,
+
+        priority:
+            Number(document.getElementById("priority").value),
+
+        mode: "routeedge"
+    };
+
+    try {
+
+        const response = await fetch("/infer", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+
+        document.getElementById(loadingId).remove();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Inference failed");
+        }
+
+        const target = (data.target || "unknown").toUpperCase();
+
+        const device =
+            target === "EDGE"
+                ? "Raspberry Pi 5"
+                : "GPU Server";
+
+        const detailId = "details-" + Date.now();
+
+        chat.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="message assistant">
+
+                <div>${escapeHtml(data.response || "")}</div>
+
+                <div class="route-badge"
+                     onclick="toggleDetails('${detailId}')">
+
+                    ${target === "EDGE" ? "◆" : "☁"}
+                    ${target} · ${device}
+                    <span>⌄</span>
+
+                </div>
+
+                <div class="details" id="${detailId}">
+
+                    <strong>RouteEdge Routing Details</strong><br>
+
+                    Execution target:
+                    <b>${target}</b><br>
+
+                    Device:
+                    ${device}<br>
+
+                    Actual latency:
+                    ${format(data.actual_latency_s, " s")}<br>
+
+                    Generation speed:
+                    ${data.generation_tokens_per_second != null
+                        ? format(data.generation_tokens_per_second, " tokens/s")
+                        : (data.output_tokens != null && data.actual_latency_s
+                            ? format(data.output_tokens / data.actual_latency_s, " tokens/s")
+                            : "—")}<br>
+                    Predicted edge latency:
+                    ${format(data.predicted_edge_latency_s, " s")}<br>
+
+                    Predicted server latency:
+                    ${format(data.predicted_server_latency_s, " s")}<br>
+
+                    Prompt tokens:
+                    ${data.prompt_tokens ?? "—"}<br>
+
+                    Output tokens:
+                    ${data.output_tokens ?? "—"}
+
+                </div>
+
+            </div>
+            `
+        );
+
+    } catch (error) {
+
+        const loading = document.getElementById(loadingId);
+
+        if (loading) {
+            loading.innerHTML =
+                "RouteEdge error: " + escapeHtml(error.message);
+        }
+
+    }
+
+    button.disabled = false;
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function toggleDetails(id) {
+
+    const element = document.getElementById(id);
+
+    element.style.display =
+        element.style.display === "block"
+            ? "none"
+            : "block";
+}
+
+function format(value, suffix) {
+
+    if (value === undefined || value === null)
+        return "—";
+
+    return Number(value).toFixed(2) + suffix;
+}
+
+</script>
+
+</body>
+</html>

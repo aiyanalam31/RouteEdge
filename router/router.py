@@ -25,8 +25,9 @@ import time
 from enum import Enum
 
 import requests
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Path
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field, FilePath
 
 
 # ============================================================
@@ -44,7 +45,7 @@ app = FastAPI(
 # Endpoints
 # ============================================================
 
-EDGE_URL = "http://pizero.local:11434/api/generate"
+EDGE_URL = "http://10.186.58.24:11434/api/generate"
 SERVER_URL = "http://localhost:11434/api/generate"
 
 MODEL = "qwen2.5:0.5b"
@@ -735,7 +736,12 @@ def run_inference(
 # API Endpoints
 # ============================================================
 
+BASE_DIR = FilePath(__file__).resolve().parent.parent
 @app.get("/")
+
+def web_ui():
+    return FileResponse(BASE_DIR / "web" / "index.html")
+
 def root():
 
     return {
